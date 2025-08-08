@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp API Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #25D366;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #25D366;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #128C7E;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .word-count {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e8f5e8;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .result.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .result.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .setup-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .setup-info h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+        .code {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 WhatsApp API Integration</h1>
+        
+        <div class="setup-info">
+            <h3>✅ Credentials Configured</h3>
+            <p>Your WhatsApp Business API credentials are configured:</p>
+            <div class="code">
+                WHATSAPP_API_TOKEN=EAAV8t6vPw0k... (configured)<br>
+                WHATSAPP_PHONE_NUMBER_ID=706438209226069<br>
+                VERIFY_TOKEN=1307967827417268
+            </div>
+            <p><strong>Status:</strong> ✅ Ready to send messages! Add your test phone number in Facebook Developer Console first.</p>
+        </div>
+
+        <form id="messageForm">
+            <div class="form-group">
+                <label for="phoneNumber">📞 Phone Number (with country code):</label>
+                <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="e.g., 1234567890" required>
+                <small>Format: Country code + phone number (no + or spaces)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="message">💬 Message:</label>
+                <textarea id="message" name="message" placeholder="Type your message here..." required></textarea>
+                <div id="wordCount" class="word-count">Word count: 0</div>
+            </div>
+
+            <button type="submit" id="sendBtn">📤 Send Message</button>
+        </form>
+
+        <div class="loading" id="loading">
+            <p>📤 Sending message...</p>
+        </div>
+
+        <div id="result" class="result"></div>
+
+        <div style="margin-top: 30px;">
+            <h3>🔍 Features:</h3>
+            <ul>
+                <li>✅ Send messages through WhatsApp Business API</li>
+                <li>✅ Real-time word count calculation</li>
+                <li>✅ Automatic response handling with word count</li>
+                <li>✅ Webhook integration for incoming messages</li>
+                <li>✅ RESTful API endpoints</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const messageInput = document.getElementById('message');
+        const wordCountDiv = document.getElementById('wordCount');
+        const form = document.getElementById('messageForm');
+        const sendBtn = document.getElementById('sendBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+
+        // Word count functionality
+        function countWords(text) {
+            if (!text || typeof text !== 'string') return 0;
+            return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+        }
+
+        // Update word count in real-time
+        messageInput.addEventListener('input', function() {
+            const text = this.value;
+            const wordCount = countWords(text);
+            wordCountDiv.textContent = `Word count: ${wordCount}`;
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const message = document.getElementById('message').value;
+            
+            if (!phoneNumber || !message) {
+                showResult('Please fill in all fields', 'error');
+                return;
+            }
+
+            // Show loading
+            sendBtn.disabled = true;
+            loading.style.display = 'block';
+            result.style.display = 'none';
+
+            try {
+                const response = await fetch('/send-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        to: phoneNumber,
+                        message: message
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult(
+                        `✅ Message sent successfully!<br>
+                         📊 Word count: ${data.wordCount}<br>
+                         📱 To: ${phoneNumber}<br>
+                         💬 Message: "${message}"`,
+                        'success'
+                    );
+                    form.reset();
+                    wordCountDiv.textContent = 'Word count: 0';
+                } else {
+                    showResult(`❌ Error: ${data.error || 'Failed to send message'}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Network error: ${error.message}`, 'error');
+            } finally {
+                sendBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+
+        function showResult(message, type) {
+            result.innerHTML = message;
+            result.className = `result ${type}`;
+            result.style.display = 'block';
+        }
+
+        // Test server connection on page load
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('/health');
+                if (response.ok) {
+                    console.log('✅ Server is running and healthy');
+                } else {
+                    console.warn('⚠️ Server responded but may have issues');
+                }
+            } catch (error) {
+                console.error('❌ Cannot connect to server:', error);
+                showResult('⚠️ Cannot connect to server. Make sure the server is running on port 3000.', 'error');
+            }
+        }
+
+        checkServerStatus();
+    </script>
+</body>
+</html>
